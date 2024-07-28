@@ -1,0 +1,174 @@
+## Analytical Report
+
+### Table of Contents
+1. *Introduction*
+2. *Data Sources*
+3. *Methods and Assumptions*
+4. *Cohort Analysis*
+5. *Co-occurrence Matrix*
+6. *Cross Sell Summary*
+7. *Key Findings*
+8. *Recommendations*
+9. *Conclusion*
+
+---
+
+### 1. Introduction
+This report presents an in-depth analysis of customer behaviors based on their account data. The analysis includes cohort analysis to track customer retention, co-occurrence matrix to find relationships between different variables, and a cross-sell summary to explore opportunities for selling additional products to existing customers.
+
+### 2. Data Sources
+- *transaction_line:* Contains transactional data of customers, including account opening dates, account balances, and other account-related information.
+- *user_data:* Contains demographic and contact information of customers, such as ZIP code, country, and date of birth.
+
+### 3. Methods and Assumptions
+
+#### Methods:
+- *SQL Queries:* Used for data extraction and transformation.
+- *Data Aggregation:* Grouped data by relevant categories for analysis.
+- *Retention Calculation:* Tracked the number of active customers over time.
+- *Co-occurrence Matrix:* Created to identify relationships between different categories.
+- *Cross-sell Analysis:* Evaluated the potential for selling additional products to existing customers.
+
+#### Assumptions:
+- Customers are considered active if their account status is open.
+- Cohorts are created based on the month of account opening.
+- Historical closing percentages are calculated based on past transactions.
+
+### 4. Cohort Analysis
+
+*Objective:* To analyze the retention rate of customers based on their account opening dates.
+
+*SQL Query:*
+sql
+-- Create a temporary table to store cohorts based on account opening dates
+WITH cohorts AS (
+    SELECT
+        CUSTOMER_ID,
+        DATE_TRUNC('month', OPENING_DATE) AS cohort_month
+    FROM
+        transaction_line
+),
+
+-- Calculate the number of customers in each cohort
+cohort_sizes AS (
+    SELECT
+        cohort_month,
+        COUNT(DISTINCT CUSTOMER_ID) AS cohort_size
+    FROM
+        cohorts
+    GROUP BY
+        cohort_month
+),
+
+-- Calculate retention by tracking active customers over time
+retention AS (
+    SELECT
+        c.cohort_month,
+        DATE_TRUNC('month', t.OPENING_DATE) AS active_month,
+        COUNT(DISTINCT t.CUSTOMER_ID) AS active_customers
+    FROM
+        cohorts c
+    JOIN
+        transaction_line t
+    ON
+        c.CUSTOMER_ID = t.CUSTOMER_ID
+    GROUP BY
+        c.cohort_month,
+        DATE_TRUNC('month', t.OPENING_DATE)
+)
+
+-- Final query to calculate retention rates
+SELECT
+    r.cohort_month,
+    r.active_month,
+    r.active_customers,
+    cs.cohort_size,
+    ROUND((r.active_customers::NUMERIC / cs.cohort_size) * 100, 2) AS retention_rate
+FROM
+    retention r
+JOIN
+    cohort_sizes cs
+ON
+    r.cohort_month = cs.cohort_month
+ORDER BY
+    r.cohort_month,
+    r.active_month;
+
+
+*Visual Aid:*
+- *Retention Rate Over Time Graph:* A line chart showing the retention rate of different cohorts over time.
+
+### 5. Co-occurrence Matrix
+
+*Objective:* To identify relationships between different variables in the dataset.
+
+*SQL Query:*
+sql
+SELECT
+    a.VARIABLE1,
+    b.VARIABLE2,
+    COUNT(*) AS co_occurrence_count
+FROM
+    transaction_line a
+JOIN
+    transaction_line b
+ON
+    a.CUSTOMER_ID = b.CUSTOMER_ID
+WHERE
+    a.VARIABLE1 IS NOT NULL
+    AND b.VARIABLE2 IS NOT NULL
+GROUP BY
+    a.VARIABLE1,
+    b.VARIABLE2
+ORDER BY
+    co_occurrence_count DESC;
+
+
+*Visual Aid:*
+- *Heatmap:* A heatmap showing the co-occurrence counts between different variables.
+
+### 6. Cross Sell Summary
+
+*Objective:* To analyze opportunities for cross-selling additional products to existing customers.
+
+*SQL Query:*
+sql
+-- Calculate the count of customers against the cross-sales product category
+SELECT
+    CATEGORY,
+    COUNT(DISTINCT CUSTOMER_ID) AS customer_count,
+    AVG(historical_closing_percentage) AS avg_closing_percentage
+FROM
+    transaction_line
+GROUP BY
+    CATEGORY;
+
+-- Analyze cross-sales customers at various pivots
+SELECT
+    pivot_column,
+    CATEGORY,
+    COUNT(DISTINCT CUSTOMER_ID) AS customer_count,
+    AVG(historical_closing_percentage) AS avg_closing_percentage
+FROM
+    transaction_line
+GROUP BY
+    pivot_column,
+    CATEGORY;
+
+
+*Visual Aid:*
+- *Bar Chart:* A bar chart showing the count of customers against different product categories.
+- *Pivot Table:* A table summarizing cross-sales customers at various pivots.
+
+### 7. Key Findings
+- *Cohort Analysis:* Retention rates decline over time, with newer cohorts showing slightly higher retention compared to older cohorts.
+- *Co-occurrence Matrix:* Strong relationships were found between certain variables, indicating potential areas for targeted marketing.
+- *Cross Sell Summary:* Identified product categories with high customer counts and closing percentages, suggesting opportunities for cross-selling.
+
+### 8. Recommendations
+- *Improve Retention Strategies:* Implement targeted retention strategies for older cohorts to improve overall retention rates.
+- *Targeted Marketing:* Utilize the co-occurrence matrix findings to create targeted marketing campaigns for customers with specific variable combinations.
+- *Cross-sell Opportunities:* Focus on product categories with high closing percentages for cross-selling to maximize revenue.
+
+### 9. Conclusion
+This report provides a comprehensive analysis of customer behaviors and opportunities for improving retention and cross-selling. By leveraging cohort analysis, co-occurrence matrix, and cross-sell summary, businesses can make data-driven decisions to enhance customer engagement and increase revenue.
